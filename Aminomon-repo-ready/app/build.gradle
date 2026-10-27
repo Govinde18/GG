@@ -1,0 +1,39 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'app.aminomon'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'app.aminomon'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // The game files are already compressed; wasm must stay readable as a stream.
+    androidResources { noCompress += ['wasm', 'zip', 'woff', 'mjs', 'js'] }
+
+    // Optional: create keystore.properties (see README) to sign release builds.
+    def ksFile = rootProject.file('keystore.properties')
+    signingConfigs {
+        if (ksFile.exists()) {
+            def p = new Properties(); p.load(new FileInputStream(ksFile))
+            release {
+                storeFile file(p['storeFile']); storePassword p['storePassword']
+                keyAlias p['keyAlias']; keyPassword p['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (ksFile.exists()) signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

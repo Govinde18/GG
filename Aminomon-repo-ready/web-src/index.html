@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#121212">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Aminomon</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{--bg:#121212;--fg:#d0d0d0;--acc:#d7d7af;--btn:#262626;--btn2:#3a3a3a;--panel:#1c1c1c;--line:#555}
+:root[data-theme=light]{--acc:#7a5c00;--btn:#e4dfd0;--btn2:#cfc8b3;--panel:#faf7ee;--line:#a09a88}
+:root[data-theme=contrast]{--acc:#ffff00;--btn:#000;--btn2:#333;--panel:#000;--line:#fff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);overflow:hidden;overscroll-behavior:none;
+  font:14px/1.4 system-ui,sans-serif;touch-action:none}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#stage.on{opacity:1}
+#term{display:block;background:var(--bg);image-rendering:pixelated;margin-left:var(--gl,0);margin-right:var(--gr,0)}
+#pad,#acts{position:fixed;bottom:max(10px,env(safe-area-inset-bottom));display:grid;gap:6px;z-index:5}
+#pad{left:max(8px,env(safe-area-inset-left));grid-template-columns:repeat(3,1fr);width:calc(var(--gl,96px) - 14px)}
+#acts{right:max(8px,env(safe-area-inset-right));grid-template-columns:1fr;width:calc(var(--gr,96px) - 14px)}
+.b{border:1px solid var(--line);background:var(--btn);color:var(--fg);border-radius:12px;font:600 16px system-ui,sans-serif;
+  display:flex;align-items:center;justify-content:center;aspect-ratio:1;min-height:34px;touch-action:none;cursor:pointer}
+.b.on{background:var(--btn2);border-color:var(--acc);color:#fff}
+#acts .b{aspect-ratio:auto;min-height:40px;font-size:14px}
+#pad .e{visibility:hidden}
+#menubtn{position:fixed;top:max(6px,env(safe-area-inset-top));right:max(6px,env(safe-area-inset-right));z-index:6;width:38px;height:38px;
+  aspect-ratio:auto;opacity:.65;font-size:20px;min-height:0}
+.hide{display:none!important}
+#menu{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;touch-action:auto}
+#menu .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;width:min(92vw,380px);max-height:92vh;overflow:auto;
+  display:grid;gap:8px}
+#menu h2{margin:0 0 4px;font-size:16px;color:var(--acc)}
+#menu .row,#save .row{display:flex;gap:8px;align-items:center}
+#menu .row .b,#save .row .b{flex:1;aspect-ratio:auto;min-height:42px;font-size:14px}
+#menu small{color:#888}
+#loader{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);text-align:center;padding:20px}
+#loader h1{margin:0;font:700 28px ui-monospace,Menlo,monospace;letter-spacing:.15em;color:var(--acc)}
+#spin{width:34px;height:34px;border:4px solid #333;border-top-color:var(--acc);border-radius:50%;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+#status{white-space:pre-wrap;color:#999;max-width:90vw;font-size:13px}#status.err{color:#e08080;user-select:text;-webkit-user-select:text}
+#rotate,#exit{position:fixed;inset:0;z-index:15;background:rgba(18,18,18,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
+#rotate .ph{font-size:46px;display:inline-block;animation:r 2s ease-in-out infinite}
+@keyframes r{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+
+body.ctl-off #pad,body.ctl-off #acts{display:none}
+body.ctl-float #pad,body.ctl-float #acts{opacity:.42;transition:opacity .15s;width:auto}
+body.ctl-float #pad{grid-template-columns:repeat(3,52px)}body.ctl-float #pad .b{min-height:46px;aspect-ratio:auto;height:46px}
+body.ctl-float #acts{grid-template-columns:repeat(2,64px)}body.ctl-float #acts .b{min-height:46px}
+body.ctl-float #pad,body.ctl-float #acts{bottom:calc(var(--lift,10px) + env(safe-area-inset-bottom))}
+body.ctl-float #pad:active,body.ctl-float #acts:active,body.ctl-float .b.on{opacity:.9}
+body.lh #pad{left:auto;right:max(8px,env(safe-area-inset-right))}
+body.lh #acts{right:auto;left:max(8px,env(safe-area-inset-left))}
+#menu h3{margin:6px 0 0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#888}
+#menu .row .b span{color:var(--acc);margin-left:6px;font-weight:700}
+#menu textarea{width:100%;min-height:120px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;
+  font:12px ui-monospace,monospace;padding:8px;user-select:text;-webkit-user-select:text;touch-action:auto}
+#save{position:fixed;inset:0;z-index:25;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;touch-action:auto}
+#save .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;width:min(94vw,520px);display:grid;gap:8px}
+#keys{position:fixed;left:0;right:0;bottom:0;z-index:12;background:rgba(18,18,18,.88);padding:6px 6px max(6px,env(safe-area-inset-bottom));display:grid;gap:5px}
+:root[data-theme=light] #keys{background:rgba(243,239,228,.92)}
+.krow{display:flex;gap:5px;justify-content:center}
+.kb{flex:0 0 min(8.4vw,52px);height:40px;aspect-ratio:auto;min-height:0;font-size:15px}.kb.wide{flex:0 0 auto;padding:0 14px;font-size:13px}
+#toast{position:fixed;left:50%;top:14px;transform:translate(-50%,-80px);z-index:30;background:var(--panel);color:var(--fg);border:1px solid var(--line);
+  padding:8px 16px;border-radius:20px;font-size:13px;transition:transform .2s;pointer-events:none}
+#toast.show{transform:translate(-50%,0)}
+.rip{position:fixed;z-index:4;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:2px solid var(--acc);pointer-events:none;animation:rp .45s ease-out forwards}
+@keyframes rp{from{transform:scale(.3);opacity:.9}to{transform:scale(1.5);opacity:0}}
+#fontlbl{margin-left:6px}
+#menu .b,#save .b,#coach .b{touch-action:manipulation}
+#menu .box{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+#menu .sl{gap:10px}#menu .sl label{flex:0 0 118px;font-size:13px;color:#999}
+#menu input[type=range]{flex:1;accent-color:var(--acc);height:30px;touch-action:pan-x}
+#barwrap{width:min(60vw,320px);height:6px;border-radius:3px;background:#2a2a2a;overflow:hidden}
+#bar{height:100%;width:4%;background:var(--acc);border-radius:3px;transition:width .6s ease}
+#tip{color:#777;font-size:13px;min-height:20px;max-width:80vw}
+#loader{transition:opacity .35s}#loader.hide{display:flex!important;opacity:0;pointer-events:none}
+#coach{position:fixed;inset:0;z-index:18;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;touch-action:manipulation}
+#coach .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 22px;max-width:min(92vw,440px);display:grid;gap:9px;justify-items:center;text-align:center}
+#coach h2{margin:0;color:var(--acc);font-size:18px}.tipline{font-size:14px;line-height:1.35}
+#stage.on #term{will-change:transform}
+
+#hub{position:fixed;inset:0;z-index:16;background:radial-gradient(ellipse at 30% 0%,#1d2b25 0,#121212 60%);display:flex;align-items:center;justify-content:center;overflow:auto;touch-action:pan-y}
+:root[data-theme=light] #hub{background:radial-gradient(ellipse at 30% 0%,#fff8df 0,#f3efe4 60%)}
+.hubin{width:min(96vw,880px);padding:12px 0;text-align:center}
+#hub-title{margin:0;font:700 clamp(26px,6vw,40px) ui-monospace,Menlo,monospace;letter-spacing:.22em;color:var(--acc)}
+.sub{margin:4px 0 16px;color:#888;font-size:14px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:18px;padding:16px 12px;display:grid;gap:6px;justify-items:center;
+  font:inherit;cursor:pointer;touch-action:manipulation;transition:transform .12s,border-color .12s}
+.card:active{transform:scale(.97);border-color:var(--acc)}
+.card .ic{font-size:clamp(30px,8vw,46px);line-height:1}.card b{font-size:clamp(15px,3.4vw,19px);color:var(--acc)}
+.card span{font-size:12.5px;color:#999;line-height:1.3}.card i{font-style:normal;font-size:12.5px;color:#8aaf8a;margin-top:2px}
+.card.study{border-color:#6a5d2a}
+.hubbar{display:flex;gap:18px;justify-content:center;margin-top:14px}
+.lnk{background:none;border:0;color:#999;font:13px system-ui;padding:8px;cursor:pointer;touch-action:manipulation}
+#ask,#show{position:fixed;inset:0;z-index:26;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;touch-action:auto}
+#ask .box,#show .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;width:min(94vw,560px);display:grid;gap:8px}
+#ask textarea,#show textarea{width:100%;min-height:110px;max-height:46vh;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;font:12px ui-monospace,monospace;padding:8px;user-select:text;-webkit-user-select:text;touch-action:auto}
+#ask .row,#show .row{display:flex;gap:8px}#ask .b,#show .b{flex:1;aspect-ratio:auto;min-height:42px;font-size:14px;touch-action:manipulation}
+@media (max-height:420px){.cards{gap:8px}.card{padding:10px 8px}.card span{display:none}.sub{margin-bottom:8px}}
+@media (max-width:560px) and (orientation:portrait){.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="term" aria-label="Aminomon game screen" role="application"></canvas>
+</div>
+
+<div id="pad">
+  <div class="b e"></div><div class="b" data-k="up">▲</div><div class="b e"></div>
+  <div class="b" data-k="left">◀</div><div class="b" data-k="down">▼</div><div class="b" data-k="right">▶</div>
+</div>
+<div id="acts">
+  <div class="b" data-k="enter">Enter</div>
+  <div class="b" data-k="esc">Esc</div>
+  <div class="b" data-k="space">Space</div>
+  <div class="b" data-a="keys" style="font-size:18px">⌨</div>
+</div>
+<div id="menubtn" class="b" title="Menu">☰</div>
+
+<div id="loader">
+  <h1>AMINOMON</h1><div id="barwrap"><div id="bar"></div></div><div id="status">Starting…</div><div id="tip"></div><div id="spin" style="display:none"></div>
+</div>
+
+<div id="menu" class="hide"><div class="box">
+  <h2>Aminomon · options</h2>
+  <h3>View</h3>
+  <div class="row"><button class="b" data-a="smaller">Zoom −</button><button class="b" data-a="auto">Fit <small id="fontlbl">auto</small></button><button class="b" data-a="bigger">Zoom +</button></div>
+  <small>Tip: pinch the screen with two fingers to zoom.</small>
+  <div class="row"><button class="b" data-a="theme">Theme <span id="l-theme"></span></button><button class="b" data-a="full">Full screen</button></div>
+  <h3>Touch</h3>
+  <div class="row"><button class="b" data-a="ctl">Buttons <span id="l-ctl"></span></button><button class="b" data-a="hand">Hand <span id="l-hand"></span></button></div>
+  <div class="row"><button class="b" data-a="keys">⌨ All keys</button><button class="b" data-a="haptic">Vibration <span id="l-haptic"></span></button></div>
+  <h3>Extras</h3>
+  <div class="row"><button class="b" data-a="music">♪ Music <span id="l-music"></span></button><button class="b" data-a="sfx">Effects <span id="l-sfx"></span></button></div>
+  <div class="row sl"><label>Music volume</label><input id="vol-music" type="range" min="0" max="1" step="0.05"></div>
+  <div class="row sl"><label>Effects volume</label><input id="vol-sfx" type="range" min="0" max="1" step="0.05"></div>
+  <div class="row"><button class="b" data-a="wake">Keep awake <span id="l-wake"></span></button><button class="b" data-a="shot">📷 Screenshot</button></div>
+  <div class="row"><button id="b-install" class="b hide" data-a="install">Install app</button></div>
+  <h3>Your game</h3>
+  <div class="row"><button class="b" data-a="export">Back up save</button><button class="b" data-a="import">Restore save</button></div>
+  <div class="row"><button class="b" data-a="home">⌂ Games menu</button><button class="b" data-a="restart">Restart game</button></div>
+  <div class="row"><button class="b" data-a="close">Close</button></div>
+  <small>Progress is saved automatically on this device.</small>
+</div></div>
+
+<div id="save" class="hide"><div class="box">
+  <h2 id="save-title"></h2><small id="save-help"></small>
+  <textarea id="save-text" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+  <div class="row"><button id="b-copy" class="b" style="aspect-ratio:auto;padding:10px">Copy</button><button id="b-share" class="b" style="aspect-ratio:auto;padding:10px">Share</button><button id="b-restore" class="b hide" style="aspect-ratio:auto;padding:10px">Restore</button><button id="b-saveclose" class="b" style="aspect-ratio:auto;padding:10px">Close</button></div>
+</div></div>
+
+<div id="keys" class="hide"><div id="keyrows"></div></div>
+
+<div id="hub" class="hide">
+  <div class="hubin">
+    <h1 id="hub-title">AMINOMON</h1>
+    <p class="sub">Learn biochemistry by playing</p>
+    <div class="cards">
+      <button class="card" data-game="amino"><div class="ic">🧬</div><b>Aminomon</b><span>Catch and learn the 20 amino acids</span><i id="st-amino"></i></button>
+      <button class="card" data-game="gv"><div class="ic">🦠</div><b>Govinde Protocol</b><span>Cell-signalling pathways, from bacteria to complex cells</span><i id="st-gv"></i></button>
+      <button class="card study" data-game="study"><div class="ic">📚</div><b>Study &amp; Exams</b><span>Daily quiz, spaced reviews, exam mode, class tools</span><i id="st-study"></i></button>
+    </div>
+    <div class="hubbar"><button id="hub-cert" class="lnk hide">Download my Govinde certificate</button><button id="hub-menu" class="lnk">☰ Options</button></div>
+  </div>
+</div>
+<div id="ask" class="hide"><div class="box">
+  <h2 id="ask-title"></h2><small id="ask-help"></small>
+  <textarea id="ask-text" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Paste here"></textarea>
+  <div class="row"><button id="ask-paste" class="b">Paste</button><button id="ask-send" class="b">Send to game</button><button id="ask-cancel" class="b">Cancel</button></div>
+</div></div>
+<div id="show" class="hide"><div class="box">
+  <h2 id="show-title"></h2>
+  <textarea id="show-text" readonly spellcheck="false"></textarea>
+  <div class="row"><button id="show-copy" class="b">Copy</button><button id="show-share" class="b">Share</button><button id="show-close" class="b">Done</button></div>
+</div></div>
+<div id="toast"></div>
+<div id="coach" class="hide"><div class="box">
+  <h2>Welcome, researcher!</h2>
+  <div class="tipline"><b>Tap</b> any button, or tap the map to walk there</div>
+  <div class="tipline"><b>Drag</b> on the map to walk, or drag a list to scroll it</div>
+  <div class="tipline"><b>Pinch</b> with two fingers to zoom</div>
+  <div class="tipline"><b>☰</b> (top right) has music, themes, backup and more</div>
+  <button id="coach-ok" class="b" style="aspect-ratio:auto;padding:12px 26px;margin-top:6px">Let's go</button>
+</div></div>
+
+<div id="rotate" class="hide"><div class="ph">📱</div><div>Turn your phone sideways<br>for the best view.</div><button id="rotateok" class="b" style="aspect-ratio:auto;padding:8px 18px">Play anyway</button></div>
+<div id="exit" class="hide"><div>Game closed.</div><button id="again" class="b" style="aspect-ratio:auto;padding:10px 22px">Play again</button><button id="quit" class="b hide" style="aspect-ratio:auto;padding:10px 22px">Close app</button></div>
+<script src="config.js"></script>
+<script src="audio.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

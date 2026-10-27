@@ -8,14 +8,22 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      - name: Find the Gradle project
+        id: find
+        run: |
+          f=$(find . -name settings.gradle -not -path "*/node_modules/*" | head -n 1)
+          if [ -z "$f" ]; then echo "No settings.gradle found in the repo"; ls -R | head -50; exit 1; fi
+          echo "dir=$(dirname "$f")" >> "$GITHUB_OUTPUT"
+          echo "Project folder: $(dirname "$f")"
       - uses: actions/setup-java@v6
         with: { distribution: temurin, java-version: '17' }
       - uses: android-actions/setup-android@v4
       - uses: gradle/actions/setup-gradle@v6
         with: { gradle-version: '8.7' }
       - name: Build debug APK
+        working-directory: ${{ steps.find.outputs.dir }}
         run: gradle --no-daemon assembleDebug
       - uses: actions/upload-artifact@v7
         with:
           name: Aminomon-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: ${{ steps.find.outputs.dir }}/app/build/outputs/apk/debug/*.apk
